@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadCalc — Garment Thread & Trim Consumption Calculator</title>
+<style>
+  :root{
+    --bg:#eef2f6; --card:#ffffff; --ink:#1c2b3a; --mut:#5d7186; --line:#d7e0ea;
+    --accent:#0d7a6f; --accent2:#0a5f56; --soft:#e6f4f1; --danger:#c0392b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(135deg,#0d7a6f,#0a5f56);color:#fff;padding:26px 18px 22px;text-align:center}
+  header h1{margin:0;font-size:30px;letter-spacing:.5px}
+  header p{margin:6px 0 0;font-size:14.5px;opacity:.92}
+  main{max-width:1020px;margin:0 auto;padding:16px 14px 30px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 14px rgba(20,40,60,.05)}
+  .card h2{margin:0 0 4px;font-size:17px;color:var(--accent2)}
+  .card .hint{margin:0 0 14px;font-size:12.5px;color:var(--mut)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:4px}
+  input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--soft);border-color:var(--accent)}
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+  th{background:var(--soft);color:var(--accent2);text-align:left;padding:8px;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+  td input,td select{padding:7px 8px;font-size:13.5px}
+  .out{font-weight:700;color:var(--accent2);white-space:nowrap;font-size:13px;line-height:1.45}
+  .btn{border:0;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff}
+  .btn:hover{background:var(--accent2)}
+  .btn.secondary{background:#fff;color:var(--accent2);border:1px solid var(--accent)}
+  .btn.secondary:hover{background:var(--soft)}
+  .btn.small{padding:7px 12px;font-size:13px}
+  .btn.danger{background:#fff;color:var(--danger);border:1px solid #e3b6b0;padding:6px 10px}
+  .row-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .stat{background:var(--soft);border-radius:10px;padding:12px 14px}
+  .stat .k{font-size:11.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+  .stat .v{font-size:19px;font-weight:800;color:var(--accent2);margin-top:3px}
+  .stat .s{font-size:12px;color:var(--mut)}
+  #accSummary{font-size:13.5px;line-height:1.7}
+  #accSummary b{color:var(--accent2)}
+  footer{max-width:1020px;margin:0 auto;padding:0 14px 34px;color:var(--mut);font-size:12.5px;line-height:1.6}
+  .savebar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+  .savebar>div{flex:1;min-width:170px}
+  #printReport{display:none}
+  @media print{
+    body{background:#fff}
+    #app{display:none}
+    #printReport{display:block;font-size:13px;color:#000}
+    #printReport h1{font-size:20px;margin:0 0 2px}
+    #printReport h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #333;padding-bottom:3px}
+    #printReport table{width:100%;border-collapse:collapse;min-width:0}
+    #printReport th,#printReport td{border:1px solid #999;padding:5px 7px;text-align:left;font-size:12.5px}
+    #printReport .meta{color:#444;font-size:12.5px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>ThreadCalc</h1>
+  <p>Garment Thread &amp; Trim Consumption Calculator</p>
+</header>
+<main>
+
+  <!-- Style information -->
+  <section class="card">
+    <h2>Style Information</h2>
+    <p class="hint">Basic order details. Everything below updates live as you type.</p>
+    <div class="grid">
+      <div><label for="f_style">Style name</label><input id="f_style" type="text" placeholder="e.g. Basic Crew Tee"></div>
+      <div><label for="f_garment">Garment type</label><input id="f_garment" type="text" list="garmentList" placeholder="Choose or type">
+        <datalist id="garmentList">
+          <option value="T-Shirt"></option><option value="Polo Shirt"></option><option value="Sweatshirt"></option>
+          <option value="Hoodie"></option><option value="Tank Top"></option><option value="Jacket"></option>
+          <option value="Shorts"></option><option value="Trousers"></option><option value="Dress"></option>
+        </datalist></div>
+      <div><label for="f_qty">Order quantity (pcs)</label><input id="f_qty" type="number" min="0" step="any" value="0"></div>
+      <div><label for="f_wastage">Wastage % (thread)</label><input id="f_wastage" type="number" min="0" step="any" value="10"></div>
+      <div><label for="f_coneLen">Cone length (m)</label><input id="f_coneLen" type="number" min="1" step="any" value="3000"></div>
+      <div><label for="f_conePrice">Cone price</label><input id="f_conePrice" type="number" min="0" step="any" value="0"></div>
+      <div><label for="f_currency">Currency</label>
+        <select id="f_currency">
+          <option value="USD">USD</option><option value="BDT">BDT</option>
+          <option value="EUR">EUR</option><option value="GBP">GBP</option>
+        </select></div>
+    </div>
+  </section>
+
+  <!-- Sewing operations -->
+  <section class="card">
+    <h2>Sewing Operations — Thread Consumption</h2>
+    <p class="hint">Seam rows use the stitch-class factor (thread length per seam length). Fixed rows are per-piece items such as bartack, buttonhole and button attach — enter count per piece and metres per piece.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="min-width:150px">Operation</th><th>Type</th><th style="min-width:170px">Stitch class</th>
+          <th>Seam (cm)</th><th>Count/pc</th><th>m/pc</th><th>Thread (m/pc)</th><th></th>
+        </tr></thead>
+        <tbody id="opsBody"></tbody>
+      </table>
+    </div>
+    <datalist id="opList">
+      <option value="Shoulder join"></option><option value="Neck rib attach"></option><option value="Side seam"></option>
+      <option value="Hem"></option><option value="Sleeve attach"></option><option value="Cuff join"></option>
+      <option value="Collar attach"></option><option value="Placket"></option><option value="Pocket attach"></option>
+      <option value="Bartack"></option><option value="Buttonhole"></option><option value="Button attach"></option>
+    </datalist>
+    <div class="row-actions"><button class="btn small" id="addOp" type="button">+ Add operation</button></div>
+  </section>
+
+  <!-- Accessories -->
+  <section class="card">
+    <h2>Accessories &amp; Trims — Length Consumption</h2>
+    <p class="hint">For length-based trims (elastic, tape, drawstring…). Per-piece length = seam length + seam allowance. Total = per-piece × quantity × (1 + percentage %). Output is shown in cm, inch and yards.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="min-width:140px">Process</th><th>Seam length</th><th>Seam allowance</th>
+          <th>Unit</th><th>%</th><th>Output (per pc · total)</th><th></th>
+        </tr></thead>
+        <tbody id="accBody"></tbody>
+      </table>
+    </div>
+    <datalist id="accList">
+      <option value="Waist Elastic"></option><option value="Twill Tape"></option><option value="Drawstring"></option>
+      <option value="Piping"></option><option value="Binding Tape"></option><option value="Velcro"></option>
+      <option value="Zipper"></option><option value="Lace"></option><option value="Ribbon"></option>
+      <option value="Elastic Cord"></option>
+    </datalist>
+    <div class="row-actions"><button class="btn small" id="addAcc" type="button">+ Add accessory</button></div>
+  </section>
+
+  <!-- Results -->
+  <section class="card">
+    <h2>Results</h2>
+    <p class="hint">Thread totals include the wastage % from Style Information.</p>
+    <div class="results">
+      <div class="stat"><div class="k">Thread per piece</div><div class="v" id="rPerPc">0 m</div><div class="s" id="rPerPcW"></div></div>
+      <div class="stat"><div class="k">Total thread (order)</div><div class="v" id="rTotal">0 m</div><div class="s" id="rTotalKm"></div></div>
+      <div class="stat"><div class="k">Cones required</div><div class="v" id="rCones">0</div><div class="s" id="rConeNote"></div></div>
+      <div class="stat"><div class="k">Thread cost</div><div class="v" id="rCostTotal">—</div><div class="s" id="rCostPc"></div></div>
+    </div>
+    <h2 style="margin-top:18px">Accessories totals</h2>
+    <div id="accSummary">No accessories yet.</div>
+  </section>
+
+  <!-- Actions -->
+  <section class="card">
+    <h2>Actions</h2>
+    <div class="row-actions" style="margin-top:0">
+      <button class="btn" id="btnDemo" type="button">Load demo style</button>
+      <button class="btn secondary" id="btnPrint" type="button">Print report</button>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <div class="savebar">
+      <div><label for="saveName">Save current style as</label><input id="saveName" type="text" placeholder="Style name"></div>
+      <button class="btn secondary" id="btnSave" type="button">Save style</button>
+      <div><label for="loadSelect">Saved styles (this device)</label><select id="loadSelect"></select></div>
+      <button class="btn secondary" id="btnLoad" type="button">Load</button>
+      <button class="btn danger" id="btnDelete" type="button">Delete</button>
+    </div>
+  </section>
+
+</main>
+<footer>
+  <p><b>ThreadCalc</b> — a tool for garment IE &amp; planning professionals.</p>
+  <p>Consumption is calculated with industry-standard stitch factors (thread length per seam length). Results are estimates — always verify with a sample sew before bulk ordering.</p>
+</footer>
+</div>
+
+<div id="printReport"></div>
+
+<script>
+"use strict";
+/* ---------- Stitch-class factors: thread length per 1 unit of seam length ---------- */
+var FACTORS = {
+  "301": { label: "301 Lockstitch",        f: 2.5  },
+  "401": { label: "401 Chainstitch",       f: 4.0  },
+  "504": { label: "504 Overlock 3-thread", f: 14.0 },
+  "512": { label: "512 Overlock 2-needle", f: 16.0 },
+  "514": { label: "514 Overlock 2-needle", f: 17.0 },
+  "516": { label: "516 Safety stitch",     f: 20.0 },
+  "602": { label: "602 Coverstitch",       f: 22.0 },
+  "607": { label: "607 Flatlock",          f: 26.0 }
+};
+var SYMBOLS = { USD: "$", BDT: "৳", EUR: "€", GBP: "£" };
+
+/* ---------- Pure calculation helpers ---------- */
+function seamThreadM(seamCm, factor){ return (seamCm / 100) * factor; }
+function fixedThreadM(count, mPerPc){ return count * mPerPc; }
+function accPerPcCm(len, allow, unit){
+  var f = (unit === "inch") ? 2.54 : 1;
+  return (len + allow) * f;
+}
+function accTotalCm(len, allow, unit, qty, pct){
+  return accPerPcCm(len, allow, unit) * qty * (1 + pct / 100);
+}
+function fmt(n, d){
+  if (!isFinite(n)) n = 0;
+  return n.toLocaleString("en-US", { minimumFractionDigits: (d == null ? 2 : d), maximumFractionDigits: (d == null ? 2 : d) });
+}
+function num(el){ var v = parseFloat(el.value); return isFinite(v) ? v : 0; }
+function $(id){ return document.getElementById(id); }
+
+/* ---------- Operation rows ---------- */
+function classOptions(selected){
+  var html = "";
+  Object.keys(FACTORS).forEach(function(code){
+    var sel = (code === selected) ? " selected" : "";
+    html += '<option value="' + code + '"' + sel + ">" + FACTORS[code].label + " (×" + FACTORS[code].f + ")</option>";
+  });
+  return html;
+}
+function addOpRow(data){
+  data = data || {};
+  var tr = document.createElement("tr");
+  tr.className = "op-row";
+  tr.innerHTML =
+    '<td><input class="op-name" list="opList" placeholder="Operation" value="' + (data.name || "") + '"></td>' +
+    '<td><select class="op-type"><option value="seam">Seam</option><option value="fixed">Fixed / pc</option></select></td>' +
+    '<td><select class="op-class">' + classOptions(data.cls || "504") + "</select></td>" +
+    '<td><input class="op-seam" type="number" min="0" step="any" placeholder="cm" value="' + (data.seam != null ? data.seam : "") + '"></td>' +
+    '<td><input class="op-count" type="number" min="0" step="any" placeholder="pcs" value="' + (data.count != null ? data.count : "") + '"></td>' +
+    '<td><input class="op-mpc" type="number" min="0" step="any" placeholder="m" value="' + (data.mpc != null ? data.mpc : "") + '"></td>' +
+    '<td class="out op-out">0 m</td>' +
+    '<td><button type="button" class="btn danger op-del">✕</button></td>';
+  var typeSel = tr.querySelector(".op-type");
+  typeSel.value = data.type || "seam";
+  function syncType(){
+    var fixed = typeSel.value === "fixed";
+    tr.querySelector(".op-class").disabled = fixed;
+    tr.querySelector(".op-seam").disabled = fixed;
+    tr.querySelector(".op-count").disabled = !fixed;
+    tr.querySelector(".op-mpc").disabled = !fixed;
+  }
+  typeSel.addEventListener("change", function(){ syncType(); compute(); });
+  tr.querySelector(".op-del").addEventListener("click", function(){ tr.remove(); compute(); });
+  $("opsBody").appendChild(tr);
+  syncType();
+  return tr;
+}
+function opRowValue(tr){
+  if (tr.querySelector(".op-type").value === "fixed"){
+    return fixedThreadM(num(tr.querySelector(".op-count")), num(tr.querySelector(".op-mpc")));
+  }
+  var code = tr.querySelector(".op-class").value;
+  return seamThreadM(num(tr.querySelector(".op-seam")), FACTORS[code].f);
+}
+
+/* ---------- Accessory rows ---------- */
+function addAccRow(data){
+  data = data || {};
+  var tr = document.createElement("tr");
+  tr.className = "acc-row";
+  tr.innerHTML =
+    '<td><input class="acc-name" list="accList" placeholder="Process" value="' + (data.name || "") + '"></td>' +
+    '<td><input class="acc-len" type="number" min="0" step="any" placeholder="0" value="' + (data.len != null ? data.len : "") + '"></td>' +
+    '<td><input class="acc-allow" type="number" min="0" step="any" placeholder="0" value="' + (data.allow != null ? data.allow : "") + '"></td>' +
+    '<td><select class="acc-unit"><option value="cm">cm</option><option value="inch">inch</option></select></td>' +
+    '<td><input class="acc-pct" type="number" min="0" step="any" placeholder="0" value="' + (data.pct != null ? data.pct : "") + '"></td>' +
+    '<td class="out acc-out">—</td>' +
+    '<td><button type="button" class="btn danger acc-del">✕</button></td>';
+  tr.querySelector(".acc-unit").value = data.unit || "cm";
+  tr.querySelector(".acc-del").addEventListener("click", function(){ tr.remove(); compute(); });
+  $("accBody").appendChild(tr);
+  return tr;
+}
+
+/* ---------- Compute & render ---------- */
+function compute(){
+  var qty = num($("f_qty")), wastage = num($("f_wastage"));
+  var coneLen = num($("f_coneLen")) || 3000, conePrice = num($("f_conePrice"));
+  var cur = $("f_currency").value, sym = SYMBOLS[cur] || "";
+
+  var perPc = 0;
+  document.querySelectorAll(".op-row").forEach(function(tr){
+    var v = opRowValue(tr);
+    perPc += v;
+    tr.querySelector(".op-out").textContent = fmt(v) + " m";
+  });
+
+  var perPcW = perPc * (1 + wastage / 100);
+  var totalM = perPcW * qty;
+  var cones = totalM > 0 ? Math.ceil(totalM / coneLen) : 0;
+  var costTotal = cones * conePrice;
+  var costPc = qty > 0 ? costTotal / qty : 0;
+
+  $("rPerPc").textContent = fmt(perPc) + " m";
+  $("rPerPcW").textContent = "incl. wastage: " + fmt(perPcW) + " m/pc";
+  $("rTotal").textContent = fmt(totalM) + " m";
+  $("rTotalKm").textContent = fmt(totalM / 1000, 3) + " km for " + fmt(qty, 0) + " pcs";
+  $("rCones").textContent = fmt(cones, 0);
+  $("rConeNote").textContent = "cone length " + fmt(coneLen, 0) + " m";
+  $("rCostTotal").textContent = conePrice > 0 ? sym + fmt(costTotal) : "—";
+  $("rCostPc").textContent = conePrice > 0 ? ("per pc: " + sym + fmt(costPc, 4)) : "set a cone price to see cost";
+
+  var parts = [], grandCm = 0;
+  document.querySelectorAll(".acc-row").forEach(function(tr){
+    var name = tr.querySelector(".acc-name").value.trim() || "Accessory";
+    var len = num(tr.querySelector(".acc-len")), allow = num(tr.querySelector(".acc-allow"));
+    var unit = tr.querySelector(".acc-unit").value, pct = num(tr.querySelector(".acc-pct"));
+    var pcCm = accPerPcCm(len, allow, unit);
+    var totCm = accTotalCm(len, allow, unit, qty, pct);
+    grandCm += totCm;
+    var out = "pc: " + fmt(pcCm) + " cm · " + fmt(pcCm / 2.54) + " in · " + fmt(pcCm / 91.44, 3) + " yd" +
+              "<br>total: " + fmt(totCm) + " cm · " + fmt(totCm / 2.54) + " in · " + fmt(totCm / 91.44) + " yd";
+    tr.querySelector(".acc-out").innerHTML = (len + allow) > 0 ? out : "—";
+    if ((len + allow) > 0){
+      parts.push("<b>" + name + "</b>: " + fmt(totCm / 91.44) + " yd (" + fmt(totCm / 100) + " m)");
+    }
+  });
+  $("accSummary").innerHTML = parts.length
+    ? parts.join("<br>") + "<br><b>All trims total:</b> " + fmt(grandCm / 100) + " m (" + fmt(grandCm / 91.44) + " yd)"
+    : "No accessories yet.";
+}
+
+/* ---------- State (for save / load / print) ---------- */
+function readState(){
+  var ops = [], accs = [];
+  document.querySelectorAll(".op-row").forEach(function(tr){
+    ops.push({
+      name: tr.querySelector(".op-name").value, type: tr.querySelector(".op-type").value,
+      cls: tr.querySelector(".op-class").value, seam: tr.querySelector(".op-seam").value,
+      count: tr.querySelector(".op-count").value, mpc: tr.querySelector(".op-mpc").value
+    });
+  });
+  document.querySelectorAll(".acc-row").forEach(function(tr){
+    accs.push({
+      name: tr.querySelector(".acc-name").value, len: tr.querySelector(".acc-len").value,
+      allow: tr.querySelector(".acc-allow").value, unit: tr.querySelector(".acc-unit").value,
+      pct: tr.querySelector(".acc-pct").value
+    });
+  });
+  return {
+    style: $("f_style").value, garment: $("f_garment").value, qty: $("f_qty").value,
+    wastage: $("f_wastage").value, coneLen: $("f_coneLen").value, conePrice: $("f_conePrice").value,
+    currency: $("f_currency").value, ops: ops, accs: accs
+  };
+}
+function applyState(st){
+  $("f_style").value = st.style || ""; $("f_garment").value = st.garment || "";
+  $("f_qty").value = st.qty || 0; $("f_wastage").value = st.wastage != null ? st.wastage : 10;
+  $("f_coneLen").value = st.coneLen || 3000; $("f_conePrice").value = st.conePrice || 0;
+  $("f_currency").value = st.currency || "USD";
+  $("opsBody").innerHTML = ""; $("accBody").innerHTML = "";
+  (st.ops || []).forEach(addOpRow);
+  (st.accs || []).forEach(addAccRow);
+  if (!st.ops || !st.ops.length) addOpRow();
+  if (!st.accs || !st.accs.length) addAccRow();
+  compute();
+}
+
+/* ---------- Demo style ---------- */
+function loadDemo(){
+  applyState({
+    style: "Demo — Basic Crew Tee", garment: "T-Shirt", qty: 5000, wastage: 10,
+    coneLen: 3000, conePrice: 2.40, currency: "USD",
+    ops: [
+      { name: "Shoulder join",  type: "seam",  cls: "504", seam: 30 },
+      { name: "Neck rib attach",type: "seam",  cls: "504", seam: 38 },
+      { name: "Side seam",      type: "seam",  cls: "504", seam: 108 },
+      { name: "Sleeve attach",  type: "seam",  cls: "504", seam: 52 },
+      { name: "Hem",            type: "seam",  cls: "602", seam: 64 },
+      { name: "Cuff join",      type: "seam",  cls: "602", seam: 30 },
+      { name: "Collar attach",  type: "seam",  cls: "401", seam: 38 },
+      { name: "Bartack",        type: "fixed", count: 2, mpc: 0.025 }
+    ],
+    accs: [
+      { name: "Twill Tape",   len: 30, allow: 2, unit: "cm", pct: 5 },
+      { name: "Binding Tape", len: 25, allow: 1, unit: "cm", pct: 5 }
+    ]
+  });
+}
+
+/* ---------- Save / load (localStorage) ---------- */
+var LS_KEY = "threadcalc_styles_v1";
+function loadStore(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } }
+function writeStore(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch (e) {} }
+function refreshLoadList(){
+  var store = loadStore(), sel = $("loadSelect");
+  sel.innerHTML = "";
+  Object.keys(store).forEach(function(k){
+    var o = document.createElement("option"); o.value = k; o.textContent = k; sel.appendChild(o);
+  });
+  if (!sel.options.length){ var o = document.createElement("option"); o.textContent = "(no saved styles)"; sel.appendChild(o); }
+}
+
+/* ---------- Print report ---------- */
+function buildReport(){
+  var st = readState();
+  var qty = parseFloat(st.qty) || 0, wastage = parseFloat(st.wastage) || 0;
+  var coneLen = parseFloat(st.coneLen) || 3000, conePrice = parseFloat(st.conePrice) || 0;
+  var sym = SYMBOLS[st.currency] || "";
+  var perPc = 0, opRows = "";
+  st.ops.forEach(function(o){
+    var v, detail;
+    if (o.type === "fixed"){
+      v = fixedThreadM(parseFloat(o.count) || 0, parseFloat(o.mpc) || 0);
+      detail = "Fixed — " + (o.count || 0) + " × " + (o.mpc || 0) + " m";
+    } else {
+      v = seamThreadM(parseFloat(o.seam) || 0, FACTORS[o.cls].f);
+      detail = FACTORS[o.cls].label + " — seam " + (o.seam || 0) + " cm";
+    }
+    perPc += v;
+    opRows += "<tr><td>" + (o.name || "—") + "</td><td>" + detail + "</td><td>" + fmt(v) + "</td></tr>";
+  });
+  var accRows = "", grandCm = 0;
+  st.accs.forEach(function(a){
+    var len = parseFloat(a.len) || 0, allow = parseFloat(a.allow) || 0, pct = parseFloat(a.pct) || 0;
+    if ((len + allow) <= 0) return;
+    var pc = accPerPcCm(len, allow, a.unit), tot = accTotalCm(len, allow, a.unit, qty, pct);
+    grandCm += tot;
+    accRows += "<tr><td>" + (a.name || "Accessory") + "</td><td>" + fmt(pc) + " cm (" + fmt(pc / 91.44, 3) + " yd)</td><td>" +
+               fmt(tot / 91.44) + " yd (" + fmt(tot / 100) + " m)</td></tr>";
+  });
+  var perPcW = perPc * (1 + wastage / 100), totalM = perPcW * qty;
+  var cones = totalM > 0 ? Math.ceil(totalM / coneLen) : 0;
+  $("printReport").innerHTML =
+    "<h1>ThreadCalc — Consumption Report</h1>" +
+    '<p class="meta">Style: <b>' + (st.style || "—") + "</b> · Garment: " + (st.garment || "—") +
+    " · Qty: " + fmt(qty, 0) + " pcs · Wastage: " + fmt(wastage) + "%</p>" +
+    "<h2>Sewing operations</h2><table><tr><th>Operation</th><th>Detail</th><th>Thread (m/pc)</th></tr>" + opRows + "</table>" +
+    "<h2>Accessories</h2><table><tr><th>Process</th><th>Per pc</th><th>Total</th></tr>" +
+    (accRows || '<tr><td colspan="3">None</td></tr>') + "</table>" +
+    "<h2>Results</h2><table>" +
+    "<tr><td>Thread per piece</td><td>" + fmt(perPc) + " m (incl. wastage " + fmt(perPcW) + " m)</td></tr>" +
+    "<tr><td>Total thread</td><td>" + fmt(totalM) + " m (" + fmt(totalM / 1000, 3) + " km)</td></tr>" +
+    "<tr><td>Cones required</td><td>" + fmt(cones, 0) + " × " + fmt(coneLen, 0) + " m</td></tr>" +
+    "<tr><td>Thread cost</td><td>" + (conePrice > 0 ? sym + fmt(cones * conePrice) + " total · " + sym + fmt(qty > 0 ? cones * conePrice / qty : 0, 4) + "/pc" : "—") + "</td></tr>" +
+    "<tr><td>All trims total</td><td>" + fmt(grandCm / 100) + " m (" + fmt(grandCm / 91.44) + " yd)</td></tr></table>" +
+    '<p class="meta">Estimates from industry-standard stitch factors — verify with a sample sew.</p>';
+}
+
+/* ---------- Wiring ---------- */
+$("addOp").addEventListener("click", function(){ addOpRow(); compute(); });
+$("addAcc").addEventListener("click", function(){ addAccRow(); compute(); });
+$("btnDemo").addEventListener("click", loadDemo);
+$("btnPrint").addEventListener("click", function(){ buildReport(); window.print(); });
+$("btnSave").addEventListener("click", function(){
+  var name = $("saveName").value.trim() || $("f_style").value.trim();
+  if (!name){ alert("Give the style a name first."); return; }
+  var store = loadStore(); store[name] = readState(); writeStore(store);
+  refreshLoadList(); $("loadSelect").value = name;
+  alert("Saved: " + name);
+});
+$("btnLoad").addEventListener("click", function(){
+  var store = loadStore(), key = $("loadSelect").value;
+  if (store[key]) applyState(store[key]);
+});
+$("btnDelete").addEventListener("click", function(){
+  var store = loadStore(), key = $("loadSelect").value;
+  if (store[key]){ delete store[key]; writeStore(store); refreshLoadList(); }
+});
+document.addEventListener("input", function(e){
+  if (e.target.closest(".card")) compute();
+});
+document.addEventListener("change", function(e){
+  if (e.target.closest(".card")) compute();
+});
+
+/* ---------- Init ---------- */
+addOpRow({ name: "Side seam", cls: "504", seam: 100 });
+addOpRow();
+addAccRow();
+refreshLoadList();
+compute();
+</script>
+</body>
+</html>
